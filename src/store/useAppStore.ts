@@ -1,55 +1,57 @@
 import { create } from 'zustand';
-import dayjs from 'dayjs';
-
-type Match = {
-  id: string;
-  name: string;
-  age: number;
-  city: string;
-  photo: string;
-  vibe: number;
-};
 
 type Ticket = {
   id: string;
-  match: Match;
+  title: string;
+  match: { name: string };
   expiresAt: string;
-  messages: { from: 'me' | 'them'; text: string }[];
-  status: 'active' | 'closed';
+  matchPercentage: number;
+  messages?: { id: string; text: string; sender: string; timestamp: string }[];
+  chatEnded?: boolean;
 };
 
-interface AppState {
-  dailyPicks: Match[];
+type UserProfile = {
+  age?: number;
+  gender?: string;
+  interests?: string[];
+  bodyShape?: string;
+  desiredMatch?: string;
+};
+
+type AppState = {
+  userProfile: UserProfile;
   tickets: Ticket[];
-  startTicket: (match: Match) => void;
-  sendMessage: (ticketId: string, text: string, from: 'me' | 'them') => void;
+  setUserProfile: (profile: UserProfile) => void;
+  addTicket: (ticket: Ticket) => void;
   closeTicket: (ticketId: string) => void;
-}
+  sendMessage: (ticketId: string, text: string, sender: string) => void;
+  endChat: (ticketId: string) => void;
+};
 
 export const useAppStore = create<AppState>((set) => ({
-  dailyPicks: [
-    { id: '1', name: 'Rania', age: 24, city: 'Tunis', photo: 'https://placekitten.com/300/300', vibe: 92 },
-    { id: '2', name: 'Anis', age: 27, city: 'Sousse', photo: 'https://placekitten.com/301/300', vibe: 88 },
+  userProfile: {},
+  tickets: [{ id: '1', title: 'Ticket 1', match: { name: 'Alice' }, matchPercentage: 78, messages: [], expiresAt:"te" },
+    { id: '2', title: 'Ticket 2', match: { name: 'Bob' }, matchPercentage: 85, messages: [], expiresAt:"te" },
+    { id: '3', title: 'Ticket 3', match: { name: 'Charlie' }, matchPercentage: 92, messages: [], expiresAt:"te" },
   ],
-  tickets: [],
-  startTicket: (match) => set((state) => ({
-    tickets: [
-      ...state.tickets,
-      {
-        id: Date.now().toString(),
-        match,
-        expiresAt: dayjs().add(24, 'hour').toISOString(),
-        messages: [],
-        status: 'active',
-      }
-    ]
-  })),
-  sendMessage: (ticketId, text, from) => set((state) => ({
-    tickets: state.tickets.map(t => 
-      t.id === ticketId ? { ...t, messages: [...t.messages, { from, text }] } : t
-    )
-  })),
-  closeTicket: (ticketId) => set((state) => ({
-    tickets: state.tickets.map(t => t.id === ticketId ? { ...t, status: 'closed' } : t)
-  }))
+  setUserProfile: (profile) => set({ userProfile: profile }),
+  addTicket: (ticket) => set((state) => ({ tickets: [...state.tickets, ticket] })),
+  closeTicket: (ticketId) =>
+    set((state) => ({ tickets: state.tickets.filter((t) => t.id !== ticketId) })),
+  sendMessage: (ticketId, text, sender) =>
+    set((state) => ({
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? {
+              ...t,
+              messages: [...(t.messages || []), { id: Date.now().toString(), text, sender, timestamp: new Date().toISOString() }],
+            }
+          : t
+      ),
+    })),
+  saveProfile: (profile) => set({ profile }),
+  endChat: (ticketId) =>
+    set((state) => ({
+      tickets: state.tickets.map((t) => (t.id === ticketId ? { ...t, chatEnded: true } : t)),
+    })),
 }));

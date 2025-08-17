@@ -1,75 +1,62 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity } from 'react-native';
-import { useAppStore } from '../store/useAppStore';
-import dayjs from 'dayjs';
+import { View, Text, TextInput, Button, FlatList, ScrollView } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useAppStore } from '../store/useAppStore';
+import TopicButton from '../components/TopicButton';
 
 export default function TicketChatScreen() {
   const route = useRoute<RouteProp<{ params: { ticketId: string } }, 'params'>>();
   const ticketId = route.params.ticketId;
   const tickets = useAppStore((s) => s.tickets);
   const sendMessage = useAppStore((s) => s.sendMessage);
-  const closeTicket = useAppStore((s) => s.closeTicket);
-  const [input, setInput] = useState('');
+  const endChat = useAppStore((s) => s.endChat);
   const nav = useNavigation();
 
-  const ticket = tickets.find(t => t.id === ticketId);
+  const ticket = tickets.find((t) => t.id === ticketId);
+  const [message, setMessage] = useState('');
+
   if (!ticket) return <Text>Ticket not found</Text>;
 
-  const expiresIn = dayjs(ticket.expiresAt).diff(dayjs(), 'hour');
+  const suggestedTopics = ['Favorite Movie', 'Travel', 'Hobbies', 'Music', 'Food'];
 
   return (
-    <View style={{ flex: 1 }}>
-      <Text style={{ padding: 12, backgroundColor: '#ffe4ec', textAlign: 'center' }}>
-        ⏳ Ticket expires in {expiresIn} hours
+    <View style={{ flex: 1, padding: 16, backgroundColor: '#f8f9fa' }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#ff6b81', marginBottom: 12 }}>
+        Chat with {ticket.match.name}
       </Text>
 
       <FlatList
-        data={ticket.messages}
-        keyExtractor={(_, i) => i.toString()}
+        data={ticket.messages || []}
+        keyExtractor={(item) => item.id}
+        style={{ flex: 1 }}
         renderItem={({ item }) => (
-          <View style={{
-            alignSelf: item.from === 'me' ? 'flex-end' : 'flex-start',
-            backgroundColor: item.from === 'me' ? '#ff4f81' : '#eee',
-            padding: 8,
-            borderRadius: 8,
-            margin: 4,
-          }}>
-            <Text style={{ color: item.from === 'me' ? '#fff' : '#000' }}>{item.text}</Text>
+          <View style={{ marginVertical: 4, alignSelf: item.sender === 'me' ? 'flex-end' : 'flex-start', backgroundColor: item.sender === 'me' ? '#ff6b81' : '#4ecdc4', padding: 8, borderRadius: 12 }}>
+            <Text style={{ color: '#fff' }}>{item.text}</Text>
           </View>
         )}
       />
 
-      <View style={{ flexDirection: 'row', padding: 8 }}>
+      <ScrollView horizontal style={{ marginVertical: 12 }}>
+        {suggestedTopics.map((topic) => (
+          <TopicButton key={topic} title={topic} onPress={() => sendMessage(ticket.id, topic, 'me')} />
+        ))}
+      </ScrollView>
+
+      <View style={{ flexDirection: 'row', marginBottom: 16 }}>
         <TextInput
-          value={input}
-          onChangeText={setInput}
           placeholder="Type a message"
-          style={{ flex: 1, backgroundColor: '#f9f9f9', borderRadius: 8, paddingHorizontal: 8 }}
+          value={message}
+          onChangeText={setMessage}
+          style={{ flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 20, paddingHorizontal: 12, marginRight: 8 }}
         />
-        <TouchableOpacity
-          style={{ marginLeft: 8, backgroundColor: '#ff4f81', padding: 12, borderRadius: 8 }}
-          onPress={() => {
-            if (input.trim()) {
-              sendMessage(ticketId, input.trim(), 'me');
-              setInput('');
-            }
-          }}
-        >
-          <Text style={{ color: '#fff' }}>Send</Text>
-        </TouchableOpacity>
+        <Button title="Send" onPress={() => { sendMessage(ticket.id, message, 'me'); setMessage(''); }} />
       </View>
 
-      <TouchableOpacity
-        style={{ margin: 12, backgroundColor: '#222', padding: 12, borderRadius: 8 }}
-        onPress={() => {
-          closeTicket(ticketId);
-          // @ts-ignore
-          nav.navigate('TicketResult', { ticketId });
-        }}
-      >
-        <Text style={{ color: '#fff', textAlign: 'center' }}>End Ticket</Text>
-      </TouchableOpacity>
+      <Button
+        title="End Chat"
+        color="#ff6b81"
+        onPress={() => { endChat(ticket.id); nav.navigate('TicketResult', { ticketId: ticket.id }); }}
+      />
     </View>
   );
 }
